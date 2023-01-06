@@ -41,6 +41,7 @@ jobs:
           --tag $(echo "${{ steps.meta.outputs.tags }}" | xargs | sed 's/ / --tag /') \
           --env "HEROKU_PHP_PLATFORM_REPOSITORIES" \
           -B heroku/buildpacks:20 \
+          -b heroku/php \
           -b heroku/nodejs \
           -b heroku/php \
           --publish
