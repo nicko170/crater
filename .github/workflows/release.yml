@@ -1,0 +1,46 @@
+name: Build and Pack Crater
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: buildpacks/github-actions/setup-pack@v4.8.0
+
+      - name: Extract metadata for the Docker image
+        id: meta
+        uses: docker/metadata-action@97c170d70b5f8bfc77e6b23e68381f217cb64ded
+        with:
+          images: ghcr.io/${{ github.actor }}/crater
+
+      - id: build
+        name: Build and Publish container
+        env:
+          COMPOSER_AUTH: ${{ secrets.COMPOSER_AUTH }}
+          FONTAWESOME_NPM_AUTH_TOKEN: ${{ secrets.FONTAWESOME_NPM_AUTH_TOKEN }}
+          HEROKU_PHP_PLATFORM_REPOSITORIES: https://heroku-php-extensions.s3.amazonaws.com/dist-heroku-20-stable/packages.json
+        run: |
+          pack build ghcr.io/${{ github.actor }}/crater \
+          --tag ghcr.io/${{ github.actor }}/crater:${{ github.ref_name }}-$(git rev-parse --short HEAD)-$(date +%s) \
+          --tag $(echo "${{ steps.meta.outputs.tags }}" | xargs | sed 's/ / --tag /') \
+          --env "HEROKU_PHP_PLATFORM_REPOSITORIES" \
+          -B heroku/buildpacks:20 \
+          -b heroku/nodejs \
+          -b heroku/php \
+          --publish
